@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML Studio - Editor Teks Penuh</title>
+    <title>HTML Studio - Code Security Scanner</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Vue 3 (Versi Production) -->
+    <!-- Vue 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 
     <!-- Google Fonts -->
@@ -18,18 +18,16 @@
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; overflow: hidden; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
         
-        /* Scrollbar Halus */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-        /* Animasi */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.2s ease-out; }
         
-        /* Utility */
-        .btn-text { @apply px-3 py-1.5 rounded text-xs font-bold transition flex items-center justify-center; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
     </style>
 </head>
 <body>
@@ -37,7 +35,7 @@
     <div id="app" class="flex flex-col h-screen relative">
 
         <!-- NOTIFIKASI TOAST -->
-        <div v-if="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-full text-white font-bold text-xs shadow-2xl fade-in" :class="toastColor">
+        <div v-if="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[150] px-6 py-3 rounded-full text-white font-bold text-xs shadow-2xl fade-in flex items-center gap-2" :class="toastColor">
             {{ toast.message }}
         </div>
 
@@ -56,49 +54,91 @@
         <!-- MODAL KESELAMATAN -->
         <div v-if="showSecurity" class="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 fade-in">
             <div class="bg-[#1e293b] w-full max-w-lg rounded-xl shadow-2xl border border-slate-700 overflow-hidden flex flex-col max-h-[90vh]">
-                <!-- Header Laporan -->
+                
                 <div class="p-5 border-b border-slate-700 bg-slate-800 flex justify-between items-center">
                     <div>
-                        <h2 class="text-base font-bold text-white">Laporan Keselamatan</h2>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">Analisis Struktur Kod</p>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            Pusat Keselamatan
+                            <span v-if="isScanning" class="loader ml-2"></span>
+                        </h2>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">Analisis Kod Editor V2.0</p>
                     </div>
                     <button @click="showSecurity = false" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded transition">Tutup</button>
                 </div>
 
-                <!-- Skor -->
-                <div class="p-6 flex flex-col items-center border-b border-slate-700 bg-slate-800/50">
-                    <div class="text-5xl font-extrabold mb-2" :class="scoreColor">{{ securityReport.score }}%</div>
-                    <div class="text-xs font-bold px-3 py-1 rounded-full uppercase" :class="gradeBadge">Gred {{ securityReport.level }}</div>
-                </div>
-
-                <!-- Senarai Isu -->
-                <div class="flex-1 overflow-y-auto p-6 bg-[#0f172a]">
-                    <h3 class="text-[11px] font-bold text-slate-500 uppercase mb-4 tracking-widest">Keputusan Analisis</h3>
-                    
-                    <div v-if="securityReport.issues.length === 0" class="text-center py-6 border border-emerald-500/20 rounded bg-emerald-500/5">
-                        <p class="text-sm font-bold text-emerald-400">Kod Selamat!</p>
-                        <p class="text-xs text-slate-400 mt-1">Tiada risiko kritikal ditemui.</p>
+                <!-- MENU MULA IMBASAN -->
+                <div v-if="!securityReport && !isScanning" class="p-8 bg-[#0f172a] flex flex-col gap-6 items-center justify-center h-full">
+                    <div class="text-center">
+                        <div class="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-500/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-2">Imbas Kod Editor</h3>
+                        <p class="text-sm text-slate-400 max-w-xs mx-auto leading-relaxed">Sistem akan menganalisis kod HTML dalam editor untuk mencari kerentanan keselamatan, token rahsia, dan data sensitif.</p>
                     </div>
 
-                    <div v-else class="space-y-3">
-                        <div v-for="(issue, idx) in securityReport.issues" :key="idx" 
-                             class="p-3 rounded border flex flex-col gap-1"
-                             :class="issueClass(issue.severity)">
-                            <div class="flex justify-between items-center">
-                                <h4 class="text-xs font-bold uppercase">{{ issue.title }}</h4>
-                                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/20">{{ issue.severity }}</span>
+                    <button @click="startScan" class="w-full max-w-sm py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2">
+                        Mulakan Analisis
+                    </button>
+                </div>
+
+                <!-- HASIL LAPORAN -->
+                <div v-else-if="securityReport" class="flex flex-col h-full overflow-hidden fade-in">
+                    
+                    <div class="p-6 flex flex-col items-center border-b border-slate-700 bg-slate-800/50 shrink-0">
+                        <div class="text-5xl font-extrabold mb-2" :class="scoreColor">{{ securityReport.score }}%</div>
+                        <div class="text-xs font-bold px-3 py-1 rounded-full uppercase flex items-center gap-2" :class="gradeBadge">
+                            <span>Gred {{ securityReport.level }}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-6 bg-[#0f172a]">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Keputusan Analisis</h3>
+                            <button @click="resetScan" class="text-[10px] text-indigo-400 hover:text-white underline">Imbas Semula</button>
+                        </div>
+                        
+                        <div v-if="securityReport.issues.length === 0" class="text-center py-6 border border-emerald-500/20 rounded bg-emerald-500/5">
+                            <p class="text-sm font-bold text-emerald-400">Selamat & Bersih!</p>
+                            <p class="text-xs text-slate-400 mt-1">Tiada risiko kritikal atau maklumat sensitif ditemui dalam kod.</p>
+                        </div>
+
+                        <div v-else class="space-y-3">
+                            <div v-for="(issue, idx) in securityReport.issues" :key="idx" 
+                                 class="p-3 rounded border flex flex-col gap-2"
+                                 :class="issueClass(issue.severity)">
+                                
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <h4 class="text-xs font-bold uppercase mb-0.5">{{ issue.title }}</h4>
+                                        <p class="text-[11px] opacity-90 leading-relaxed">{{ issue.desc }}</p>
+                                    </div>
+                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/20 shrink-0 uppercase">{{ issue.severity }}</span>
+                                </div>
+
+                                <div v-if="issue.snippet" class="bg-black/40 p-2 rounded border border-white/5 font-mono text-[10px] break-all relative group">
+                                    <div class="flex gap-2">
+                                        <span class="text-slate-500 select-none border-r border-slate-700 pr-2 whitespace-nowrap">Baris {{ issue.line || '?' }}</span>
+                                        <code class="text-red-200">{{ issue.snippet }}</code>
+                                    </div>
+                                </div>
                             </div>
-                            <p class="text-[11px] opacity-90 leading-relaxed">{{ issue.desc }}</p>
                         </div>
                     </div>
                 </div>
+
+                <!-- Loading State -->
+                <div v-if="isScanning" class="absolute inset-0 bg-[#1e293b] flex flex-col items-center justify-center z-50">
+                    <div class="loader mb-4"></div>
+                    <p class="text-xs font-bold text-slate-300 animate-pulse">Menjalankan Deep Scan...</p>
+                    <p class="text-[10px] text-slate-500 mt-2">Menganalisis Token, API Key & Corak Sensitif</p>
+                </div>
+
             </div>
         </div>
 
         <!-- HEADER (NAVBAR) -->
         <header class="flex flex-wrap items-center justify-between px-4 py-3 bg-[#1e293b] border-b border-slate-700 z-30 gap-3 shadow-lg">
             
-            <!-- Kiri: Logo & Mod -->
             <div class="flex items-center gap-4">
                 <div class="font-extrabold text-sm tracking-tight text-white bg-slate-800 px-3 py-1.5 rounded border border-slate-600">
                     HTML STUDIO
@@ -110,116 +150,66 @@
                 </button>
             </div>
 
-            <!-- Tengah: Pilihan Peranti (Teks) -->
             <div class="flex bg-slate-800 p-1 rounded border border-slate-700">
-                <button @click="viewMode = 'phone'" class="px-4 py-1.5 rounded text-xs font-bold transition" :class="viewMode === 'phone' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'">
-                    Mobile
-                </button>
-                <button @click="viewMode = 'tablet'" class="px-4 py-1.5 rounded text-xs font-bold transition" :class="viewMode === 'tablet' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'">
-                    Tablet
-                </button>
-                <button @click="viewMode = 'laptop'" class="px-4 py-1.5 rounded text-xs font-bold transition" :class="viewMode === 'laptop' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'">
-                    Laptop
-                </button>
+                <button @click="viewMode = 'phone'" class="px-4 py-1.5 rounded text-xs font-bold transition" :class="viewMode === 'phone' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'">Mobile</button>
+                <button @click="viewMode = 'tablet'" class="px-4 py-1.5 rounded text-xs font-bold transition" :class="viewMode === 'tablet' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'">Tablet</button>
+                <button @click="viewMode = 'laptop'" class="px-4 py-1.5 rounded text-xs font-bold transition" :class="viewMode === 'laptop' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'">Laptop</button>
             </div>
 
-            <!-- Kanan: Alatan (Teks) -->
             <div class="flex items-center gap-2">
-                <button @click="runSecurity" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded border border-emerald-500 transition shadow-lg">
-                    Scan
+                <button @click="openSecurity" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded border border-emerald-500 transition shadow-lg">
+                    Security Scan
                 </button>
                 <div class="h-5 w-[1px] bg-slate-700 mx-1"></div>
-                
-                <button @click="pasteCode" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded border border-slate-600 transition">
-                    Paste
-                </button>
-                <button @click="copyCode" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded border border-slate-600 transition">
-                    Copy
-                </button>
-                <button @click="showConfirm = true" class="px-3 py-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-400 hover:text-red-300 text-xs font-bold rounded border border-red-900/30 transition">
-                    Padam
-                </button>
+                <button @click="pasteCode" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded border border-slate-600 transition">Paste</button>
+                <button @click="copyCode" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded border border-slate-600 transition">Copy</button>
+                <button @click="showConfirm = true" class="px-3 py-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-400 hover:text-red-300 text-xs font-bold rounded border border-red-900/30 transition">Padam</button>
             </div>
         </header>
 
         <!-- RUANG KERJA UTAMA -->
         <main class="flex-1 flex overflow-hidden">
-            
-            <!-- PANEL EDITOR KOD -->
             <div class="w-full md:w-[400px] border-r border-slate-800 flex flex-col bg-[#0b1120]" :class="activeTab === 'preview' ? 'hidden md:flex' : 'flex'">
                 <div class="px-4 py-2 bg-[#1e293b] text-[10px] font-bold text-slate-400 border-b border-slate-700 flex justify-between items-center">
                     <span>KOD SUMBER (SOURCE CODE)</span>
                     <span v-if="isSyncing" class="text-blue-400 animate-pulse">Menyimpan...</span>
                 </div>
-                <textarea 
-                    ref="editor"
-                    v-model="htmlCode" 
-                    class="flex-1 p-4 bg-transparent font-mono text-xs text-indigo-300 focus:outline-none resize-none leading-relaxed selection:bg-indigo-500/30 placeholder-slate-700"
-                    spellcheck="false"
-                    placeholder="Masukkan kod HTML di sini..."
-                ></textarea>
+                <textarea ref="editor" v-model="htmlCode" class="flex-1 p-4 bg-transparent font-mono text-xs text-indigo-300 focus:outline-none resize-none leading-relaxed selection:bg-indigo-500/30 placeholder-slate-700" spellcheck="false" placeholder="Masukkan kod HTML di sini..."></textarea>
             </div>
 
-            <!-- PREVIEW CANVAS -->
             <div class="flex-1 relative bg-slate-900 flex items-center justify-center p-4 overflow-hidden bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:20px_20px]" :class="activeTab === 'editor' ? 'hidden md:flex' : 'flex'">
-                
-                <div class="transition-all duration-500 shadow-2xl relative bg-white overflow-hidden flex flex-col"
-                     :style="deviceStyle">
-                    
-                    <!-- Overlay Info -->
+                <div class="transition-all duration-500 shadow-2xl relative bg-white overflow-hidden flex flex-col" :style="deviceStyle">
                     <div v-if="isVisualEdit && !showProperties" class="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-blue-600/90 text-white text-[11px] px-4 py-2 rounded shadow-xl pointer-events-none backdrop-blur animate-bounce border border-blue-400/50 font-bold">
                         Klik elemen untuk ubah
                     </div>
-
                     <iframe ref="iframe" class="w-full h-full border-none bg-white"></iframe>
                 </div>
             </div>
 
-            <!-- PANEL INSPECTOR (KANAN) -->
             <div v-if="showProperties && isVisualEdit" class="w-80 bg-[#1e293b] border-l border-slate-700 flex flex-col shadow-2xl absolute right-0 h-full z-40 md:relative fade-in">
-                <!-- Header Panel -->
                 <div class="p-3 border-b border-slate-700 flex justify-between items-center bg-slate-800">
-                    <span class="text-[11px] font-bold text-white uppercase tracking-wider">
-                        Edit: <span class="text-blue-400">{{ selectedProps.tagName }}</span>
-                    </span>
+                    <span class="text-[11px] font-bold text-white uppercase tracking-wider">Edit: <span class="text-blue-400">{{ selectedProps.tagName }}</span></span>
                     <button @click="showProperties = false" class="text-[10px] font-bold text-slate-400 hover:text-white bg-slate-700 px-2 py-1 rounded transition">Tutup</button>
                 </div>
-                
                 <div class="p-5 overflow-y-auto flex-1 space-y-6">
-
-                    <!-- AMARAN INTERAKSI -->
                     <div v-if="['link', 'button'].includes(selectedProps.interactionType)" class="bg-amber-500/10 -mx-5 px-5 py-4 border-b border-amber-500/20">
-                        <h4 class="text-[11px] font-bold text-amber-400 uppercase mb-1">
-                            Fungsi Pegun Aktif
-                        </h4>
+                        <h4 class="text-[11px] font-bold text-amber-400 uppercase mb-1">Fungsi Pegun Aktif</h4>
                         <p class="text-[10px] text-amber-200/70 mb-3 leading-tight">Link tidak akan berfungsi supaya anda boleh mengedit rupanya.</p>
-                        
                         <div v-if="selectedProps.interactionType === 'link'">
                             <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Pautan URL (Href)</label>
                             <input type="text" v-model="selectedProps.href" @input="updateStyle('href', $event.target.value)" class="w-full bg-slate-900 border border-amber-500/30 rounded p-2 text-xs text-amber-100 font-mono focus:border-amber-500 outline-none">
                         </div>
                     </div>
-
-                    <!-- KANDUNGAN -->
                     <div v-if="selectedProps.tagName === 'img'">
-                        <div class="text-slate-400 text-[10px] font-bold uppercase mb-2 border-b border-slate-700 pb-1">
-                            Sumber Gambar
-                        </div>
-                        <input type="text" v-model="selectedProps.src" @input="updateStyle('src', $event.target.value)" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white placeholder-slate-600 focus:border-blue-500 outline-none" placeholder="Masukkan URL Gambar...">
+                        <div class="text-slate-400 text-[10px] font-bold uppercase mb-2 border-b border-slate-700 pb-1">Sumber Gambar</div>
+                        <input type="text" v-model="selectedProps.src" @input="updateStyle('src', $event.target.value)" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white placeholder-slate-600 focus:border-blue-500 outline-none">
                     </div>
-
                     <div v-else>
-                         <div class="text-slate-400 text-[10px] font-bold uppercase mb-2 border-b border-slate-700 pb-1">
-                            Kandungan Teks
-                        </div>
+                         <div class="text-slate-400 text-[10px] font-bold uppercase mb-2 border-b border-slate-700 pb-1">Kandungan Teks</div>
                         <textarea v-model="selectedProps.text" @input="updateStyle('text', $event.target.value)" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white min-h-[80px] focus:border-blue-500 outline-none leading-relaxed"></textarea>
                     </div>
-
-                    <!-- GAYA -->
                     <div>
-                        <div class="text-slate-400 text-[10px] font-bold uppercase mb-3 border-b border-slate-700 pb-1">
-                            Warna & Latar
-                        </div>
+                        <div class="text-slate-400 text-[10px] font-bold uppercase mb-3 border-b border-slate-700 pb-1">Warna & Latar</div>
                         <div class="grid grid-cols-2 gap-3 mb-3">
                             <div>
                                 <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Warna Teks</label>
@@ -235,27 +225,19 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- BINGKAI -->
                      <div>
-                        <div class="text-slate-400 text-[10px] font-bold uppercase mb-3 border-b border-slate-700 pb-1">
-                            Bingkai (Border)
-                        </div>
+                        <div class="text-slate-400 text-[10px] font-bold uppercase mb-3 border-b border-slate-700 pb-1">Bingkai (Border)</div>
                         <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Lengkung Bucu: {{ selectedProps.borderRadius }}px</label>
                         <input type="range" min="0" max="50" v-model="selectedProps.borderRadius" @input="updateStyle('borderRadius', $event.target.value)" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
                     </div>
-
                 </div>
             </div>
-
         </main>
 
-        <!-- TAB MOBILE -->
         <div class="md:hidden flex border-t border-slate-800 bg-[#1e293b]">
             <button @click="activeTab = 'editor'" class="flex-1 py-4 text-[10px] font-bold tracking-widest transition" :class="activeTab === 'editor' ? 'text-indigo-400 bg-slate-800 border-t-2 border-indigo-500' : 'text-slate-500'">EDITOR</button>
             <button @click="activeTab = 'preview'" class="flex-1 py-4 text-[10px] font-bold tracking-widest transition" :class="activeTab === 'preview' ? 'text-indigo-400 bg-slate-800 border-t-2 border-indigo-500' : 'text-slate-500'">PREVIEW</button>
         </div>
-
     </div>
 
     <!-- MAIN SCRIPT -->
@@ -264,20 +246,32 @@
 
         createApp({
             setup() {
-                // --- STATE ---
                 const htmlCode = ref(`<!DOCTYPE html>
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Contoh</title>
     <script src="https://cdn.tailwindcss.com"><\/script>
     <style>body { font-family: sans-serif; padding: 20px; }</style>
 </head>
 <body>
-    <h1 class="text-3xl font-bold mb-4 text-slate-800">Hello Pengguna!</h1>
-    <p class="mb-4 text-slate-600">Klik butang di bawah atau edit teks ini secara visual.</p>
-    <button class="bg-blue-600 text-white px-6 py-2 rounded-full shadow hover:bg-blue-700 transition">Klik Saya</button>
+    <h1 class="text-3xl font-bold mb-4 text-slate-800">Ujian Keselamatan</h1>
+    <div class="mb-6 p-4 border border-red-200 rounded bg-red-50">
+        <p class="text-red-600 text-sm font-bold mb-2">Simulasi Kod Terdedah:</p>
+        
+        <!-- Contoh Token Terdedah -->
+        <script>
+            var adminPassword = "rahsia-kerajaan";
+            const config = {
+                apiKey: "AIzaSyD-1234567890abcdef",
+                dbSecret: "x8x-999-b1g-s3cr3t"
+            };
+        <\/script>
+        
+        <label class="block text-xs mb-1">Password Input:</label>
+        <input type="password" value="123456" class="border p-2 rounded mb-2 w-full">
+    </div>
+    <button class="bg-blue-600 text-white px-6 py-2 rounded-full">Klik Saya</button>
 </body>
 </html>`);
 
@@ -288,17 +282,14 @@
                 const showConfirm = ref(false);
                 const showSecurity = ref(false);
                 const isSyncing = ref(false);
-                
+                const isScanning = ref(false);
+                const securityReport = ref(null);
                 const toast = ref(null);
-                const securityReport = ref({ score: 0, issues: [], level: 'A' });
-                
                 const selectedProps = ref({ tagName: '', text: '', src: '', href: '', interactionType: '', color: '#000000', backgroundColor: '#ffffff', borderRadius: 0 });
                 const selectedNode = ref(null);
-
                 const iframe = ref(null);
                 const editor = ref(null);
 
-                // --- COMPUTED ---
                 const deviceStyle = computed(() => {
                     const sizes = {
                         phone: { width: '375px', height: '667px', borderRadius: '30px', border: '12px solid #334155' },
@@ -314,6 +305,7 @@
                 });
 
                 const scoreColor = computed(() => {
+                    if(!securityReport.value) return '';
                     const s = securityReport.value.score;
                     if(s > 89) return 'text-emerald-500';
                     if(s > 49) return 'text-amber-500';
@@ -321,208 +313,186 @@
                 });
 
                 const gradeBadge = computed(() => {
+                    if(!securityReport.value) return '';
                     const s = securityReport.value.score;
                     if(s > 89) return 'bg-emerald-500/20 text-emerald-400';
                     if(s > 49) return 'bg-amber-500/20 text-amber-400';
                     return 'bg-red-500/20 text-red-400';
                 });
 
-                // --- ACTIONS ---
                 const showToast = (msg, type = 'info') => {
                     toast.value = { message: msg, type };
                     setTimeout(() => toast.value = null, 3000);
                 };
 
-                const toggleEditMode = () => {
-                    isVisualEdit.value = !isVisualEdit.value;
-                    renderIframe();
-                };
+                const toggleEditMode = () => { isVisualEdit.value = !isVisualEdit.value; renderIframe(); };
 
                 const copyCode = async () => {
-                    try {
-                        await navigator.clipboard.writeText(htmlCode.value);
-                        showToast('Kod disalin!', 'success');
-                    } catch (e) {
-                        const ta = document.createElement('textarea');
-                        ta.value = htmlCode.value;
-                        document.body.appendChild(ta);
-                        ta.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(ta);
-                        showToast('Kod disalin (Fallback)!', 'success');
+                    try { await navigator.clipboard.writeText(htmlCode.value); showToast('Kod disalin!', 'success'); } 
+                    catch (e) {
+                        const ta = document.createElement('textarea'); ta.value = htmlCode.value; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('Kod disalin (Fallback)!', 'success');
                     }
                 };
 
                 const pasteCode = async () => {
                     try {
                         const text = await navigator.clipboard.readText();
-                        if(text) {
-                            htmlCode.value = text;
-                            showToast('Kod ditampal!', 'success');
-                        }
+                        if(text) { htmlCode.value = text; showToast('Kod ditampal!', 'success'); }
                     } catch (e) {
-                        if(editor.value) editor.value.focus();
-                        showToast('Akses disekat. Sila tekan Ctrl+V', 'warning');
+                        if(editor.value) editor.value.focus(); showToast('Akses disekat. Sila tekan Ctrl+V', 'warning');
                     }
                 };
 
-                const clearCode = () => {
-                    htmlCode.value = '';
-                    showConfirm.value = false;
-                    showToast('Editor dikosongkan.', 'info');
+                const clearCode = () => { htmlCode.value = ''; showConfirm.value = false; showToast('Editor dikosongkan.', 'info'); };
+                const openSecurity = () => { securityReport.value = null; showSecurity.value = true; };
+                const resetScan = () => { securityReport.value = null; isScanning.value = false; };
+
+                const startScan = async () => {
+                    isScanning.value = true;
+                    setTimeout(() => {
+                        analyzeCode(htmlCode.value);
+                        isScanning.value = false;
+                    }, 800);
                 };
 
-                const runSecurity = () => {
+                const analyzeCode = (code) => {
                     let score = 100;
                     let issues = [];
-                    const code = htmlCode.value;
 
                     if(!code || code.trim() === '') {
-                        securityReport.value = { score: 0, level: 'F', issues: [{ severity: 'critical', title: 'Kod Kosong', desc: 'Tiada kod ditemui.' }] };
-                        showSecurity.value = true;
+                        securityReport.value = { score: 0, level: 'F', issues: [{ severity: 'critical', title: 'Kod Kosong', desc: 'Tiada kod ditemui.', snippet: null }] };
                         return;
                     }
 
-                    if (!/<!DOCTYPE html>/i.test(code)) { score -= 10; issues.push({ severity: 'medium', title: 'Tiada Doctype', desc: '<!DOCTYPE html> diperlukan.' }); }
-                    if (!/<meta[^>]*charset=["']?utf-8["']?/i.test(code)) { score -= 20; issues.push({ severity: 'high', title: 'Tiada Charset', desc: 'Gunakan UTF-8.' }); }
-                    if (code.includes('type="password"') && /value="[^"]+"/.test(code)) { score -= 30; issues.push({ severity: 'high', title: 'Password Hardcoded', desc: 'Nilai password terdedah dalam kod sumber.' }); }
-                    if (/http:\/\//i.test(code)) { score -= 15; issues.push({ severity: 'medium', title: 'HTTP Tidak Selamat', desc: 'Sila gunakan HTTPS.' }); }
+                    const getContext = (index) => {
+                        const upToMatch = code.substring(0, index);
+                        const line = upToMatch.split('\n').length;
+                        const lines = code.split('\n');
+                        let snippet = lines[line - 1] ? lines[line - 1].trim() : "Unable to read line";
+                        if(snippet.length > 80) snippet = snippet.substring(0, 80) + '...';
+                        return { line, snippet };
+                    };
+
+                    // 1. Structure
+                    if (!/<!DOCTYPE html>/i.test(code)) { score -= 10; issues.push({ severity: 'medium', title: 'Tiada Doctype', desc: '<!DOCTYPE html> diperlukan.', snippet: null }); }
+
+                    // 2. Variable Scan (Expanded) - Covers var/let/const names containing sensitive words
+                    const jsVarRegex = /(?:const|let|var)\s+([a-zA-Z0-9_$]*)(?:password|passwd|pwd|secret|token|key)([a-zA-Z0-9_$]*)\s*=\s*["'`]((?:[^"'\\]|\\.)+)["'`]/gi;
+                    let match;
+                    while ((match = jsVarRegex.exec(code)) !== null) {
+                        score -= 40;
+                        const { line, snippet } = getContext(match.index);
+                        issues.push({ severity: 'critical', title: 'Pembolehubah Sensitif', desc: `Pembolehubah rahsia ditemui!`, snippet, line });
+                    }
+
+                    // 3. Object Properties (Expanded) - Covers object keys containing sensitive words
+                    const jsObjRegex = /([a-zA-Z0-9_$]*)(?:password|passwd|pwd|secret|token|key)([a-zA-Z0-9_$]*)\s*:\s*["'`]((?:[^"'\\]|\\.)+)["'`]/gi;
+                    while ((match = jsObjRegex.exec(code)) !== null) {
+                        score -= 40;
+                        const { line, snippet } = getContext(match.index);
+                        issues.push({ severity: 'critical', title: 'Sifat Objek Sensitif', desc: `Kunci objek rahsia ditemui!`, snippet, line });
+                    }
+
+                    // 4. AWS Keys
+                    const awsRegex = /(AKIA[0-9A-Z]{16})/g;
+                    while ((match = awsRegex.exec(code)) !== null) {
+                        score -= 50;
+                        const { line, snippet } = getContext(match.index);
+                        issues.push({ severity: 'critical', title: 'AWS Access Key', desc: 'AWS Access Key ID ditemui dalam kod!', snippet, line });
+                    }
+
+                    // 5. LocalStorage Usage
+                    const storageRegex = /(localStorage|sessionStorage)\.setItem/g;
+                    while ((match = storageRegex.exec(code)) !== null) {
+                        score -= 15;
+                        const { line, snippet } = getContext(match.index);
+                        issues.push({ severity: 'medium', title: 'Simpanan Data Tempatan', desc: 'Penggunaan storan pelayar yang berisiko jika simpan data sensitif.', snippet, line });
+                    }
+
+                    // 6. Password Hardcoded (HTML Input) - UPDATED V4 (Attribute Independent)
+                    // Cari tag input yang ada type="password" dan value="..." tak kira susunan
+                    // Regex ini mencari <input... kemudian memastikan ada type=password dan value=... di dalamnya sebelum penutup >
+                    const htmlPwdRegex = /<input(?=[^>]*\btype=["']?password["']?)(?=[^>]*\bvalue=["']?([^"'>\s]+)["']?)[^>]*>/gi;
+                    while ((match = htmlPwdRegex.exec(code)) !== null) {
+                        score -= 30;
+                        const val = match[1]; // Captured value from lookahead
+                        const { line, snippet } = getContext(match.index);
+                        issues.push({ severity: 'high', title: 'HTML Password Value', desc: `Input password mempunyai nilai "${val}".`, snippet, line });
+                    }
+
+                    // 7. HTTP Links
+                    const httpRegex = /(href|src)=["'](http:\/\/[^"']+)["']/gi;
+                    while ((match = httpRegex.exec(code)) !== null) {
+                        score -= 10;
+                        const { line, snippet } = getContext(match.index);
+                        issues.push({ severity: 'low', title: 'HTTP Tidak Selamat', desc: `Pautan tidak selamat (${match[2]}).`, snippet, line });
+                    }
 
                     score = Math.max(0, score);
                     let level = score < 50 ? 'D' : score < 75 ? 'C' : score < 90 ? 'B' : 'A';
-                    
                     securityReport.value = { score, issues, level };
-                    showSecurity.value = true;
                 };
 
                 const issueClass = (sev) => {
-                    if(sev === 'critical' || sev === 'high') return 'bg-red-900/10 border-red-500/30 text-red-200';
+                    if(sev === 'critical') return 'bg-red-950/30 border-red-500 text-red-100 animate-pulse';
+                    if(sev === 'high') return 'bg-red-900/10 border-red-500/30 text-red-200';
                     if(sev === 'medium') return 'bg-amber-900/10 border-amber-500/30 text-amber-200';
                     return 'bg-blue-900/10 border-blue-500/30 text-blue-200';
                 };
 
-                // --- IFRAME LOGIC ---
                 const renderIframe = () => {
                     if(!iframe.value || isSyncing.value) return;
-                    
                     const doc = iframe.value.contentDocument;
-                    doc.open();
-                    doc.write(htmlCode.value);
-                    doc.close();
-
-                    showProperties.value = false;
-                    selectedNode.value = null;
-
-                    if(isVisualEdit.value) {
-                        setTimeout(() => injectScripts(doc), 50);
-                    }
+                    doc.open(); doc.write(htmlCode.value); doc.close();
+                    showProperties.value = false; selectedNode.value = null;
+                    if(isVisualEdit.value) setTimeout(() => injectScripts(doc), 50);
                 };
 
                 const injectScripts = (doc) => {
-                    const style = doc.createElement('style');
-                    style.id = 'visual-css';
-                    style.innerHTML = `
-                        body { cursor: default; } 
-                        *[data-v-hover]:hover { outline: 2px dashed #3b82f6 !important; cursor: pointer !important; }
-                        *[data-v-selected] { outline: 3px solid #2563eb !important; z-index: 9999; position: relative; }
-                        a[data-v-hover] { pointer-events: all; }
-                    `;
+                    const style = doc.createElement('style'); style.id = 'visual-css';
+                    style.innerHTML = `body { cursor: default; } *[data-v-hover]:hover { outline: 2px dashed #3b82f6 !important; cursor: pointer !important; } *[data-v-selected] { outline: 3px solid #2563eb !important; z-index: 9999; position: relative; } a[data-v-hover] { pointer-events: all; }`;
                     doc.head.appendChild(style);
-
-                    doc.body.querySelectorAll('*:not(script):not(style)').forEach(el => {
-                        el.setAttribute('data-v-hover', 'true');
-                    });
-
+                    doc.body.querySelectorAll('*:not(script):not(style)').forEach(el => el.setAttribute('data-v-hover', 'true'));
                     doc.body.removeEventListener('click', handleIframeClick, true);
                     doc.body.addEventListener('click', handleIframeClick, true);
                 };
 
                 const handleIframeClick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                    e.preventDefault(); e.stopPropagation();
                     const target = e.target;
-                    
                     if(target.tagName === 'BODY' || target.tagName === 'HTML') return;
-
                     const doc = target.ownerDocument;
                     doc.querySelectorAll('*[data-v-selected]').forEach(el => el.removeAttribute('data-v-selected'));
                     target.setAttribute('data-v-selected', 'true');
-                    
                     selectedNode.value = target;
-                    
                     const computed = doc.defaultView.getComputedStyle(target);
-                    const rgb2hex = (rgb) => {
-                        if(!rgb || rgb.startsWith('#')) return rgb;
-                        const rgbv = rgb.match(/\d+/g);
-                        if(!rgbv) return '#000000';
-                        return "#" + ((1 << 24) + (parseInt(rgbv[0]) << 16) + (parseInt(rgbv[1]) << 8) + parseInt(rgbv[2])).toString(16).slice(1);
-                    };
-
-                    let iType = 'none';
-                    let hrefVal = '';
-                    if(target.tagName === 'A') { iType = 'link'; hrefVal = target.getAttribute('href') || '#'; }
-                    else if(target.tagName === 'BUTTON') iType = 'button';
-
-                    selectedProps.value = {
-                        tagName: target.tagName.toLowerCase(),
-                        text: target.innerText,
-                        src: target.getAttribute('src') || '',
-                        href: hrefVal,
-                        interactionType: iType,
-                        color: rgb2hex(computed.color),
-                        backgroundColor: rgb2hex(computed.backgroundColor),
-                        borderRadius: parseInt(computed.borderRadius) || 0
-                    };
-
+                    const rgb2hex = (rgb) => { if(!rgb || rgb.startsWith('#')) return rgb; const rgbv = rgb.match(/\d+/g); if(!rgbv) return '#000000'; return "#" + ((1 << 24) + (parseInt(rgbv[0]) << 16) + (parseInt(rgbv[1]) << 8) + parseInt(rgbv[2])).toString(16).slice(1); };
+                    let iType = 'none'; let hrefVal = ''; if(target.tagName === 'A') { iType = 'link'; hrefVal = target.getAttribute('href') || '#'; } else if(target.tagName === 'BUTTON') iType = 'button';
+                    selectedProps.value = { tagName: target.tagName.toLowerCase(), text: target.innerText, src: target.getAttribute('src') || '', href: hrefVal, interactionType: iType, color: rgb2hex(computed.color), backgroundColor: rgb2hex(computed.backgroundColor), borderRadius: parseInt(computed.borderRadius) || 0 };
                     showProperties.value = true;
                 };
 
                 const updateStyle = (key, val) => {
-                    const node = selectedNode.value;
-                    if(!node) return;
-
-                    if(key === 'text') node.innerText = val;
-                    else if(key === 'src') node.setAttribute('src', val);
-                    else if(key === 'href') node.setAttribute('href', val);
-                    else if(key === 'borderRadius') node.style.borderRadius = val + 'px';
-                    else node.style[key] = val;
-
-                    isSyncing.value = true;
-                    const doc = iframe.value.contentDocument;
-                    const clone = doc.documentElement.cloneNode(true);
-                    
-                    clone.querySelector('body').querySelectorAll('*').forEach(el => {
-                        el.removeAttribute('data-v-hover');
-                        el.removeAttribute('data-v-selected');
-                    });
-                    const styleTag = clone.querySelector('#visual-css');
-                    if(styleTag) styleTag.remove();
-
-                    htmlCode.value = "<!DOCTYPE html>\n" + clone.outerHTML;
-                    
-                    setTimeout(() => isSyncing.value = false, 100);
+                    const node = selectedNode.value; if(!node) return;
+                    if(key === 'text') node.innerText = val; else if(key === 'src') node.setAttribute('src', val); else if(key === 'href') node.setAttribute('href', val); else if(key === 'borderRadius') node.style.borderRadius = val + 'px'; else node.style[key] = val;
+                    isSyncing.value = true; const doc = iframe.value.contentDocument; const clone = doc.documentElement.cloneNode(true);
+                    clone.querySelector('body').querySelectorAll('*').forEach(el => { el.removeAttribute('data-v-hover'); el.removeAttribute('data-v-selected'); });
+                    const styleTag = clone.querySelector('#visual-css'); if(styleTag) styleTag.remove();
+                    htmlCode.value = "<!DOCTYPE html>\n" + clone.outerHTML; setTimeout(() => isSyncing.value = false, 100);
                 };
 
-                watch(htmlCode, () => {
-                    if(!isSyncing.value) setTimeout(renderIframe, 500);
-                });
-
+                watch(htmlCode, () => { if(!isSyncing.value) setTimeout(renderIframe, 500); });
                 watch(viewMode, renderIframe);
-
-                onMounted(() => {
-                    renderIframe();
-                });
+                onMounted(() => renderIframe());
 
                 return {
                     htmlCode, viewMode, isVisualEdit, activeTab, showProperties, showConfirm, showSecurity, securityReport,
-                    deviceStyle, toastColor, scoreColor, gradeBadge, selectedProps,
-                    editor, iframe, toast,
-                    toggleEditMode, copyCode, pasteCode, clearCode, runSecurity, updateStyle, issueClass
+                    deviceStyle, toastColor, scoreColor, gradeBadge, selectedProps, editor, iframe, toast,
+                    toggleEditMode, copyCode, pasteCode, clearCode, openSecurity, startScan, resetScan,
+                    isScanning, issueClass, updateStyle
                 };
             }
         }).mount('#app');
     </script>
 </body>
 </html>
-
-
